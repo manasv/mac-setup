@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 echo -n "Enter a comment for your ssh key (e.g. your email): "
 read ssh_comment
