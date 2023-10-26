@@ -42,6 +42,13 @@ if ! [ -x "$(command -v brew)" ]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 else
     echo "Homebrew is already installed."
+    local homebrew_init='eval "$(/opt/homebrew/bin/brew shellenv)"'
+
+    if ! grep -qF $homebrew_init ~/.zprofile; then
+        echo $homebrew_init >> ~/.zprofile
+    fi
+
+    eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
 # Update homebrew recipes
