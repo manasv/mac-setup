@@ -47,6 +47,8 @@ fi
 # Update homebrew recipes
 echo "Updating homebrew..."
 brew update
+echo "Enabling alternate versions of casks"
+brew tap homebrew/cask-versions
 
 # CLI Apps
 cli_apps=(
