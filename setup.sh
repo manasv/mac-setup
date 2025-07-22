@@ -100,7 +100,10 @@ configure_git() {
 configure_macos() {
     echo "--- Configuring macOS Settings ---"
     
-    # Dock
+    # Dock - Clear all icons and configure settings
+    echo "Clearing all dock icons..."
+    defaults write com.apple.dock persistent-apps -array
+    defaults write com.apple.dock persistent-others -array
     defaults write com.apple.dock "autohide" -bool "true"
     defaults write com.apple.dock "show-recents" -bool "false"
     defaults write com.apple.dock minimize-to-application -bool "true"
