@@ -1,8 +1,5 @@
 # Brewfile
 
-# Tap into alternate versions of casks
-tap "homebrew/cask-versions"
-
 # CLI Apps
 brew "git"
 brew "autojump"
@@ -17,7 +14,7 @@ brew "zsh-syntax-highlighting"
 cask "discord"
 cask "zen-browser"
 cask "fork"
-cask "iterm2"
+cask "warp"
 cask "raycast"
 cask "slack"
 cask "telegram"

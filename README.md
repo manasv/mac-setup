@@ -20,7 +20,7 @@ This repository contains a comprehensive setup script for configuring a new macO
 1.  **Clone the Repository**
 
     ```bash
-    git clone https://github.com/your-username/mac-setup.git
+    git clone https://github.com/manasv/mac-setup.git
     cd mac-setup
     ```
 
