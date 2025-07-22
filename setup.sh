@@ -1,6 +1,9 @@
-#!/bin/bash
+#!/bin/zsh
 
 set -e
+# Zsh-specific options for script compatibility
+setopt SH_WORD_SPLIT  # Make word splitting behave like bash
+setopt POSIX_ALIASES  # Make aliases behave like bash
 
 # Function to set up SSH keys
 setup_ssh() {
