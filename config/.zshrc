@@ -61,3 +61,8 @@ fi
 if [ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
   source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 fi
+
+# Source .zprofile to load Homebrew environment
+if [ -f "$HOME/.zprofile" ]; then
+    source "$HOME/.zprofile"
+fi

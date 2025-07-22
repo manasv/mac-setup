@@ -1,153 +1,173 @@
 #!/bin/bash
 
-echo -n "Enter a comment for your ssh key (e.g. your email): "
-read ssh_comment
-echo -n "Enter a name for your ssh key: "
-read ssh_key_name
+set -e
 
-echo "Creating an SSH key for you..."
-ssh-keygen -t ed25519 -C "$ssh_comment" -f $ssh_key_name
-mkdir ~/.ssh
-mv "$ssh_key_name" "$ssh_key_name.pub" ~/.ssh
-echo "Your SSH key ($ssh_key_name) was moved to ~/.ssh"
-
-echo "Host bitbucket
-    Hostname bitbucket.org
-    IdentityFile ~/.ssh/$ssh_key_name
-    UseKeychain yes
-    AddKeysToAgent yes
-    
-    Host github
-    Hostname github.com
-    IdentityFile ~/.ssh/$ssh_key_name
-    UseKeychain yes
-    AddKeysToAgent yes
-    " > ~/.ssh/config
-
-echo "Please add this public key to your preferred version control platform"
-echo "https://github.com/settings/keys"
-echo "https://bitbucket.org/account/settings/ssh-keys/"
-echo "https://gitlab.com/-/profile/keys"
-
-echo "Installing Xcode Command Line Tools"
-xcode-select --install
-
-# Check for Homebrew,
-# Install if we don't have it
-if ! [ -x "$(command -v brew)" ]; then
-    echo "Installing homebrew... 🍺"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-    echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-else
-    echo "Homebrew is already installed."
-    local homebrew_init='eval "$(/opt/homebrew/bin/brew shellenv)"'
-
-    if ! grep -qF $homebrew_init ~/.zprofile; then
-        echo $homebrew_init >> ~/.zprofile
+# Function to set up SSH keys
+setup_ssh() {
+    echo "--- Setting up SSH ---"
+    if [ ! -d "$HOME/.ssh" ]; then
+        mkdir -p "$HOME/.ssh"
+        chmod 700 "$HOME/.ssh"
     fi
 
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-fi
+    read -p "Enter a comment for your SSH key (e.g., your email): " ssh_comment
+    read -p "Enter a name for your SSH key (default: id_ed25519): " ssh_key_name
+    ssh_key_name=${ssh_key_name:-id_ed25519}
+    local ssh_key_path="$HOME/.ssh/$ssh_key_name"
 
-# Update homebrew recipes
-echo "Updating homebrew..."
-brew update
-echo "Enabling alternate versions of casks"
-brew tap homebrew/cask-versions
+    if [ -f "$ssh_key_path" ]; then
+        echo "SSH key $ssh_key_path already exists."
+    else
+        echo "Creating an SSH key for you..."
+        ssh-keygen -t ed25519 -C "$ssh_comment" -f "$ssh_key_path"
+        echo "Your SSH key ($ssh_key_name) was created in ~/.ssh"
+    fi
 
-# CLI Apps
-cli_apps=(
-    git
-    autojump
-    eza
-    mas
-    htop
-    neovim
-    zsh-autosuggestions
-    zsh-syntax-highlighting
-)
+    local ssh_config_path="$HOME/.ssh/config"
+    if [ ! -f "$ssh_config_path" ]; then
+        touch "$ssh_config_path"
+    fi
 
-# Desktop Apps
-desktop_apps=(
-    discord
-    firefox-developer-edition
-    fork
-    iterm2
-    raycast
-    slack
-    telegram
-    visual-studio-code
-    xcodes
-)
+    # Add common Git hosts
+    local hosts=("github.com" "bitbucket.org")
+    for host in "${hosts[@]}"; do
+        if ! grep -q "Host $host" "$ssh_config_path"; then
+            echo "Adding $host to SSH config..."
+            {
+                echo "Host $host"
+                echo "    Hostname $host"
+                echo "    IdentityFile $ssh_key_path"
+                echo "    UseKeychain yes"
+                echo "    AddKeysToAgent yes"
+                echo ""
+            } >> "$ssh_config_path"
+        else
+            echo "$host already configured in SSH config."
+        fi
+    done
 
-# Desktop Apps
-appstore_apps=(
-    441258766  #Magnet
-    905953485  #NordVPN
-    937984704  #Amphetamine
-    1465439395 #Dark Noise
-    904280696  #Things
-    639968404  #Parcel
-)
+    echo "Please add this public key to your preferred version control platform:"
+    cat "$ssh_key_path.pub"
+    echo "https://github.com/settings/keys"
+    echo "https://bitbucket.org/account/settings/ssh-keys/"
+    echo "https://gitlab.com/-/profile/keys"
+    echo "--------------------"
+}
 
-# Install CLI Apps
-echo "Installing CLI apps"
-brew install ${cli_apps[@]}
+# Function to install Homebrew and its dependencies
+install_homebrew() {
+    echo "--- Installing Homebrew ---"
+    if ! command -v brew &> /dev/null; then
+        echo "Installing Homebrew... 🍺"
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        
+        # Add Homebrew to PATH
+        (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> "$HOME/.zprofile"
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    else
+        echo "Homebrew is already installed."
+    fi
+    
+    # Update Homebrew
+    echo "Updating Homebrew..."
+    brew update
+    echo "--------------------"
+}
 
-# Install Desktop Apps
-echo "Installing desktop apps"
-brew install --cask ${desktop_apps[@]}
+# Function to install packages from Brewfile
+install_packages() {
+    echo "--- Installing Packages from Brewfile ---"
+    if [ -f "Brewfile" ]; then
+        brew bundle --file="./Brewfile"
+    else
+        echo "Brewfile not found. Skipping package installation."
+    fi
+    echo "--------------------"
+}
 
-# Install Appstore only apps
-echo "Installing AppStore apps"
-mas install ${appstore_apps[@]}
+# Function to configure Git global settings
+configure_git() {
+    echo "--- Configuring Git ---"
+    read -p "Enter your name for Git: " name
+    git config --global user.name "$name"
 
-echo "Configuring Git global settings"
+    read -p "Enter your email for Git: " email
+    git config --global user.email "$email"
+    echo "--------------------"
+}
 
-echo -n "Enter your name: "
-read name
-git config --global user.name "$name"
+# Function to set macOS defaults
+configure_macos() {
+    echo "--- Configuring macOS Settings ---"
+    
+    # Dock
+    defaults write com.apple.dock "autohide" -bool "true"
+    defaults write com.apple.dock "show-recents" -bool "false"
+    defaults write com.apple.dock minimize-to-application -bool "true"
+    killall Dock || true
+    
+    # Finder
+    defaults write NSGlobalDomain "AppleShowAllExtensions" -bool "true"
+    defaults write com.apple.finder "ShowPathbar" -bool "true"
+    killall Finder || true
 
-echo -n "Enter your email: "
-read email
-git config --global user.email "$email"
+    # Xcode
+    defaults write com.apple.dt.Xcode "ShowBuildOperationDuration" -bool "true"
+    killall Xcode || true
+    
+    echo "--------------------"
+}
 
-# Mac Settings
-echo "Setting some Mac settings..."
+# Function to set up Zsh configuration
+setup_zsh() {
+    echo "--- Setting up Zsh ---"
+    local zshrc_source="config/.zshrc"
+    local zshrc_dest="$HOME/.zshrc"
 
-# Dock
-defaults write com.apple.dock "autohide" -bool "true"
-defaults write com.apple.dock "show-recents" -bool "false"
-defaults write com.apple.dock minimize-to-application -bool "true"
+    if [ -f "$zshrc_dest" ]; then
+        echo "Backing up existing .zshrc to .zshrc.bak"
+        mv "$zshrc_dest" "$zshrc_dest.bak"
+    fi
 
-killall Dock
+    if [ -f "$zshrc_source" ]; then
+        cp "$zshrc_source" "$zshrc_dest"
+        echo ".zshrc copied to home directory."
+        source "$zshrc_dest"
+    else
+        echo "Source .zshrc not found in 'config' directory."
+    fi
+    echo "--------------------"
+}
 
-# Finder
-defaults write NSGlobalDomain "AppleShowAllExtensions" -bool "true"
-defaults write com.apple.finder "ShowPathbar" -bool "true"
-defaults write com.apple.finder "FXPreferredViewStyle" -string "Nlsv"
-defaults write com.apple.finder "_FXSortFoldersFirst" -bool "true"
-defaults write com.apple.finder "FXDefaultSearchScope" -string "SCcf"
+# Function to install Xcode Command Line Tools
+install_xcode_tools() {
+    echo "--- Installing Xcode Command Line Tools ---"
+    if ! xcode-select -p &> /dev/null; then
+        echo "Installing Xcode Command Line Tools..."
+        # This will open a prompt, user interaction is required
+        xcode-select --install
+    else
+        echo "Xcode Command Line Tools are already installed."
+    fi
+    echo "--------------------"
+}
 
-defaults write com.apple.finder "_FXSortFoldersFirstOnDesktop" -bool "true"
-defaults write com.apple.menuextra.clock "DateFormat" -string "\"EEE d MMM HH:mm:ss\""
+# Main function to run all setup steps
+main() {
+    echo "Starting Mac Setup..."
+    
+    setup_ssh
+    install_xcode_tools
+    install_homebrew
+    install_packages
+    configure_git
+    configure_macos
+    setup_zsh
 
-killall Finder
+    echo "Cleaning up brew..."
+    brew cleanup
+    
+    echo "Done! ✅"
+}
 
-# Xcode
-defaults write com.apple.dt.Xcode "ShowBuildOperationDuration" -bool "true"
-
-killall Xcode
-
-# Cleanup
-echo "Cleaning up brew..."
-brew cleanup
-
-# Copy the existing .zshrc file from the config directory to the home directory
-cp config/.zshrc ~/.zshrc
-
-source ~/.zshrc
-
-echo "Done! ✅"
+main
